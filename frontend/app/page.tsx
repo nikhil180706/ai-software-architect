@@ -7,7 +7,7 @@ export default function Home() {
 
   // When the button is clicked, this calls the Python backend
   const handleGenerate = async () => {
-    const response = await fetch("http://127.0.0.1:8000/generate?user_prompt=" + prompt, {
+    const response = await fetch("/api/generate?user_prompt=" + prompt, {
       method: "POST"
     });
     const data = await response.json();
@@ -18,7 +18,7 @@ export default function Home() {
     <div className="p-10 font-sans">
       <h1 className="text-3xl font-bold mb-4">AI Software Architect</h1>
       <input 
-        className="border p-2 w-full text-black" 
+        className="border p-2 w-full text-black bg-white rounded" 
         placeholder="E.g., Build a CRM with Stripe"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
