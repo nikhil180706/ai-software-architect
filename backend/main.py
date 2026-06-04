@@ -23,7 +23,7 @@ def generate_architecture(req: UserRequest):
     ai_client = instructor.from_groq(client)
     
     response = ai_client.chat.completions.create(
-        model="llama-3.3-70b-specdec",
+        model="llama-3.3-70b-versatile",
         response_model=CompleteApplicationSchema,
         messages=[
             {"role": "system", "content": "You are an elite Software Architect. Generate strict technical JSON."},
