@@ -1,112 +1,120 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [output, setOutput] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // --- Animated Text Logic (Typewriter Effect) ---
+  const [animatedText, setAnimatedText] = useState("");
+  const phrases = ["a CRM with Payments.", "an E-commerce Dashboard.", "a Secure Auth System.", "an AI SaaS Platform."];
+  
+  useEffect(() => {
+    let currentPhraseIndex = 0;
+    let isDeleting = false;
+    let text = "";
+    let timer: NodeJS.Timeout;
 
+    const type = () => {
+      const fullPhrase = phrases[currentPhraseIndex];
+      if (isDeleting) {
+        text = fullPhrase.substring(0, text.length - 1);
+      } else {
+        text = fullPhrase.substring(0, text.length + 1);
+      }
+      setAnimatedText(text);
+
+      let speed = isDeleting ? 50 : 100;
+      if (!isDeleting && text === fullPhrase) {
+        speed = 2000; // Pause at the end of the word
+        isDeleting = true;
+      } else if (isDeleting && text === "") {
+        isDeleting = false;
+        currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+        speed = 500; // Pause before typing next word
+      }
+      timer = setTimeout(type, speed);
+    };
+
+    timer = setTimeout(type, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // --- API Call Logic ---
   const handleGenerate = async () => {
-    if (!prompt.trim()) return; // Prevent empty submits
-    setLoading(true);
-    setError("");
-    setResult(null);
-
+    if (!prompt) return;
+    setIsLoading(true);
+    setOutput("Engineering architecture...\nConnecting to LLM...");
+    
     try {
-      const response = await fetch("/api/generate?user_prompt=" + prompt, {
-        method: "POST"
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
       });
       
-      if (!response.ok) {
-        throw new Error(`Backend crashed with status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setResult(data);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong connecting to the Brain.");
+      if (!res.ok) throw new Error("API Route failed.");
+      const data = await res.json();
+      setOutput(JSON.stringify(data, null, 2));
+    } catch (error: any) {
+      setOutput(`Error: ${error.message}\nMake sure your Groq API key is in Vercel!`);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center py-20 px-4 relative overflow-hidden">
-      {/* Background Ambient Glow */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30"></div>
-      <div className="absolute top-[20%] right-[-10%] w-96 h-96 bg-blue-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-30"></div>
-
-      {/* Main Glass Card */}
-      <div className="relative z-10 w-full max-w-3xl bg-white/5 backdrop-blur-xl border border-white/10 p-8 md:p-12 rounded-3xl shadow-2xl">
-        
-        {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500 mb-4 tracking-tight">
-            AI Software Architect
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Describe your project, and the AI will generate the perfect system blueprint.
-          </p>
-        </div>
-
-        {/* Input Section */}
-        <div className="space-y-4">
-          <textarea 
-            className="w-full bg-black/50 border border-gray-700 text-white rounded-2xl p-5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none min-h-[120px]" 
-            placeholder="E.g., Build a SaaS CRM with Stripe subscriptions, role-based access control, and a PostgreSQL database..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-          
-          <button 
-            onClick={handleGenerate} 
-            disabled={loading || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold py-4 px-8 rounded-2xl transition-all shadow-[0_0_20px_rgba(124,58,237,0.3)] hover:shadow-[0_0_30px_rgba(124,58,237,0.5)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {loading ? (
-              <>
-                {/* Spinning Loading SVG */}
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Designing Architecture...</span>
-              </>
-            ) : (
-              <span>Generate Blueprint &rarr;</span>
-            )}
-          </button>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mt-8 bg-red-500/10 border border-red-500/50 text-red-400 p-5 rounded-2xl flex items-center space-x-3">
-            <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <p>{error}</p>
-          </div>
-        )}
-
-        {/* Success Output (Terminal Style) */}
-        {result && (
-          <div className="mt-10">
-            <div className="flex items-center justify-between mb-3 px-2">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">System Architecture</h3>
-              {/* Fake Mac Window Dots */}
-              <span className="flex space-x-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              </span>
-            </div>
-            <div className="bg-[#1e1e1e] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-              <pre className="p-6 text-sm text-green-400 overflow-x-auto font-mono whitespace-pre-wrap">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
+    <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col items-center py-20 px-6 font-sans">
+      
+      {/* Header with Animated Text */}
+      <div className="max-w-3xl w-full text-center mb-12">
+        <h1 className="text-5xl font-extrabold tracking-tight mb-4">
+          Design <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+            {animatedText}
+          </span>
+          <span className="animate-pulse">|</span>
+        </h1>
+        <p className="text-slate-400 text-lg">
+          Describe your application in plain text. Our multi-stage AI pipeline instantly drafts a strict, deployment-ready backend blueprint.
+        </p>
       </div>
+
+      {/* Input Section */}
+      <div className="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
+        <textarea
+          className="w-full h-32 bg-slate-950 text-slate-100 border border-slate-700 rounded-xl p-4 focus:outline-none focus:border-blue-500 transition-colors resize-none mb-4"
+          placeholder="e.g., Build a CRM with login, contacts, role-based access, and a premium plan with payments..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+        />
+        
+        <button 
+          onClick={handleGenerate}
+          disabled={isLoading || !prompt}
+          className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+            isLoading ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+          }`}
+        >
+          {isLoading ? "Compiling Architecture..." : "Generate Technical Blueprint"}
+        </button>
+      </div>
+
+      {/* Output Section */}
+      {output && (
+        <div className="max-w-3xl w-full mt-8 bg-black rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+          <div className="bg-slate-900 px-4 py-2 border-b border-slate-800 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span className="text-slate-500 text-xs ml-2 font-mono">architecture.json</span>
+          </div>
+          <pre className="p-6 text-emerald-400 font-mono text-sm overflow-x-auto whitespace-pre-wrap">
+            {output}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
