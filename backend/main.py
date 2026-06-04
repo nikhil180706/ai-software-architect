@@ -4,6 +4,8 @@ import os
 import instructor
 from groq import Groq
 
+os.environ["GROQ_API_KEY"] = "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"
+
 # THIS VARIABLE MUST BE FLUSH AGAINST THE LEFT WALL (NO SPACES)
 app = FastAPI()
 
